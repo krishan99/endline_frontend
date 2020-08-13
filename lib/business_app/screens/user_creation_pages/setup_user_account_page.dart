@@ -15,23 +15,27 @@ class SetupAccountPage extends StatelessWidget {
       return FormPage(
         title: "Hello There!",
         subheading: "We're almost finished.",
-        formPageData: FormPageData([
-          FormFieldData(
-            placeholderText: "Enter Business Name"
-          ),
-          FormFieldData(
-            placeholderText: "Enter Business Description", maxLines: 6)
+        formPageData: FormPageData(
+          [
+            FormPageDataElement.textfield(
+              TextFieldFormData(
+                placeholderText: "Enter Business Name",
+                maxLines: 1
+              ),
+            ),
+            FormPageDataElement.textfield(
+              TextFieldFormData(
+                placeholderText: "Enter Business Description",
+                maxLines: 6
+              )
+            )
           ]
         ),
         
         onPressed: (formData) async {
-          if (formData[0].text.isEmpty) {
-            throw CustomException("You must enter a business name.");
-          }
-
           await user.updateUserData(
-            name: formData[0].text,
-            description: formData[1].text
+            name: formData[0].textfield.text,
+            description: formData[1].textfield.text
           );
         },
 

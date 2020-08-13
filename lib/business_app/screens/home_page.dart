@@ -3,7 +3,6 @@ import 'package:business_app/business_app/screens/user_creation_pages/sign_up_pa
 import 'package:business_app/components/buttons.dart';
 import 'package:business_app/theme/themes.dart';
 import 'package:flutter/material.dart';
-import 'package:business_app/components/components.dart';
 import 'package:business_app/business_app/screens/user_creation_pages/login_page.dart';
 
 enum EntranceScreenType { signUp, logIn }
@@ -70,10 +69,11 @@ class HomePage extends StatelessWidget {
                       textAlign: TextAlign.center,
                       style: MyStyles.of(context).textThemes.h1,
                     )),
-                    SizedBox(height: 14),
+                    SizedBox(height: 5),
                     Container(
+                      padding: EdgeInsets.all(5),
                       child: AutoSizeText(
-                        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do",
+                        "Welcome to making queue management a breeze!",
                         textAlign: TextAlign.center,
                         style: MyStyles.of(context).textThemes.h4,
                       ),

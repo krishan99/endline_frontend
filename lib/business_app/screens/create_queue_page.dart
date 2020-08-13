@@ -10,30 +10,45 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class CreateQueue extends StatelessWidget {
-  @override
-  final AllQueuesInfo qinfo;
-
-  CreateQueue(this.qinfo);
   Widget build(BuildContext context) {
     return FormPage(
       title: "Create a Queue",
       formPageData: FormPageData([
-        FormFieldData(
-          placeholderText: "Enter Queue Name",
-          checkError: (text) {
-            if (text != null && text.length < 5) {
-              return "Queue name must be at least 5 characters.";
-            } else {
-              return null;
+        FormPageDataElement.textfield(
+          TextFieldFormData(
+            placeholderText: "Enter Queue Name",
+            isRequired: true,
+            maxLines: 1,
+            checkError: (text) {
+              if (text != null && text.length < 5) {
+                return "Queue name must be at least 5 characters.";
+              } else {
+                return null;
+              }
             }
-          }),
-        FormFieldData(placeholderText: "Enter Queue Description (Optional)", maxLines: 3)
+          )
+        ),
+        
+        FormPageDataElement.textfield(
+          TextFieldFormData(
+            isRequired: false,
+            placeholderText: "Enter Queue Description",
+            maxLines: 3
+          )
+        )
       ]),
       onPressed: (formData) async {
-        if (formData[0].text.isEmpty) {
-          throw CustomException("You must enter a queue name.");
-        }
-        qinfo.makeQueue(formData[0].text, formData[1].text);
+        formData.checkUserInput();
+
+        final name = formData[0].textfield.text;
+        final description = formData[1].textfield.text;
+
+        AllQueuesInfo qinfo = Provider.of<AllQueuesInfo>(context, listen: false);
+
+        await qinfo.makeQueue(
+          name: name,
+          description: description,
+        );
       },
       onSuccess: () => Navigator.pop(context),
     );

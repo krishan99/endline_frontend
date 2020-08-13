@@ -1,15 +1,20 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart';
 
 class MyStyles {
-  static MyStyles lightMode = MyStyles._(images: MyImages.lightMode, colors: MyColors.lightMode, textThemes: MyTextThemes.lightMode);
-  static MyStyles darkMode = MyStyles._(images: MyImages.darkMode, colors: MyColors.darkMode, textThemes: MyTextThemes.darkMode);
+  static MyStyles lightMode = MyStyles._(
+      images: MyImages.lightMode,
+      colors: MyColors.lightMode,
+      textThemes: MyTextThemes.lightMode);
+  static MyStyles darkMode = MyStyles._(
+      images: MyImages.darkMode,
+      colors: MyColors.darkMode,
+      textThemes: MyTextThemes.darkMode);
 
   static MyStyles of(BuildContext context) {
     switch (MediaQuery.of(context).platformBrightness) {
-      case Brightness.light: 
+      case Brightness.light:
         return MyStyles.darkMode;
       case Brightness.dark:
         return MyStyles.darkMode;
@@ -36,19 +41,15 @@ class MyImages {
   final Image userAccountIcon;
   final Image gearIcon;
 
-  MyImages._({
-    this.userAccountIcon,
-    this.gearIcon
-  });
+  MyImages._({this.userAccountIcon, this.gearIcon});
 
   MyImages copyWith({
     Image userAccountIcon,
     Image gearIcon,
   }) {
     return MyImages._(
-      userAccountIcon: userAccountIcon ?? this.userAccountIcon,
-      gearIcon: gearIcon ?? this.gearIcon
-    );
+        userAccountIcon: userAccountIcon ?? this.userAccountIcon,
+        gearIcon: gearIcon ?? this.gearIcon);
   }
 }
 
@@ -60,29 +61,38 @@ class MyColors {
     active: Color.fromRGBO(52, 209, 42, 1),
     secondary: Color.fromRGBO(98, 98, 98, 1),
     accentGradient: LinearGradient(
-      begin: Alignment.topCenter,
-      end: Alignment.bottomCenter,
-      colors: <Color>[
-        Color.fromRGBO(255, 75, 43, 1),
-        Color.fromRGBO(255, 65, 108, 1)
-      ]
-    ),
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: <Color>[
+          Color.fromRGBO(255, 75, 43, 1),
+          Color.fromRGBO(255, 65, 108, 1)
+        ]),
     statusBarColor: Colors.transparent,
     systemBarIconBrightness: Brightness.light,
   );
 
-  static MyColors darkMode = MyColors.lightMode.copyWith(systemBarIconBrightness: Brightness.dark);
+  static MyColors darkMode =
+      MyColors.lightMode.copyWith(systemBarIconBrightness: Brightness.dark);
 
-  MyColors copyWith({Color background1, Color background2, Color accent, Color active, Color secondary, LinearGradient accentGradient, Color statusBarColor, Brightness systemBarIconBrightness}) {
+  MyColors copyWith(
+      {Color background1,
+      Color background2,
+      Color accent,
+      Color active,
+      Color secondary,
+      LinearGradient accentGradient,
+      Color statusBarColor,
+      Brightness systemBarIconBrightness}) {
     return MyColors._(
       background1: background1 ?? this.background1,
       background2: background2 ?? this.background2,
-      accent: accent ?? this.accent, 
+      accent: accent ?? this.accent,
       active: active ?? this.active,
       secondary: secondary ?? this.secondary,
       accentGradient: accentGradient ?? this.accentGradient,
       statusBarColor: statusBarColor ?? this.statusBarColor,
-      systemBarIconBrightness: systemBarIconBrightness ?? this.systemBarIconBrightness,
+      systemBarIconBrightness:
+          systemBarIconBrightness ?? this.systemBarIconBrightness,
     );
   }
 
@@ -94,30 +104,106 @@ class MyColors {
   final Color statusBarColor;
   final Color active;
   final Brightness systemBarIconBrightness;
-  const MyColors._({this.background1, this.background2, this.active, this.accent, this.secondary, this.accentGradient, this.statusBarColor, this.systemBarIconBrightness}); 
+  const MyColors._(
+      {this.background1,
+      this.background2,
+      this.active,
+      this.accent,
+      this.secondary,
+      this.accentGradient,
+      this.statusBarColor,
+      this.systemBarIconBrightness});
 }
 
 class MyTextThemes {
   static const _fontFamily = "SanFrancisco";
 
   static const lightMode = MyTextThemes._(
-    h1: TextStyle(fontSize: 47, fontFamily: MyTextThemes._fontFamily, color: Color.fromRGBO(0, 0, 0, 1), fontWeight: FontWeight.bold),
-    h2: TextStyle(fontSize: 40, fontFamily: MyTextThemes._fontFamily, color: Color.fromRGBO(0, 0, 0, 1), fontWeight: FontWeight.bold),
-    h3: TextStyle(fontSize: 20, fontFamily: MyTextThemes._fontFamily, color: Color.fromRGBO(98, 98, 98, 1), fontWeight: FontWeight.bold),
-    h4: TextStyle(fontSize: 20, fontFamily: MyTextThemes._fontFamily, color: Color.fromRGBO(57, 57, 57, 1), fontWeight: FontWeight.w300),
-    h5: TextStyle(fontSize: 10, fontFamily: MyTextThemes._fontFamily, color: Color.fromRGBO(98, 98, 98, 1), fontWeight: FontWeight.w300),
-    bodyText1: TextStyle(fontSize: 20, fontFamily: MyTextThemes._fontFamily, color: Color.fromRGBO(0, 0, 0, 1), fontWeight: FontWeight.bold),
-    bodyText2: TextStyle(fontSize: 18, fontFamily: MyTextThemes._fontFamily, color: Color.fromRGBO(116, 116, 116, 1), fontWeight: FontWeight.bold),
-    bodyText3: TextStyle(fontSize: 17, fontFamily: MyTextThemes._fontFamily, color: Color.fromRGBO(103, 103, 103, 1), fontWeight: FontWeight.w300),
-    buttonActionText1: TextStyle(fontSize: 20, fontFamily: MyTextThemes._fontFamily, color: Colors.white, fontWeight: FontWeight.w300),
-    buttonActionText2: TextStyle(fontSize: 18, fontFamily: MyTextThemes._fontFamily, color: Colors.white, fontWeight: FontWeight.w300),
-    buttonActionText3: TextStyle(fontSize: 16, fontFamily: MyTextThemes._fontFamily, color: Colors.white, fontWeight: FontWeight.w300),
-    subtext: TextStyle(fontSize: 15, fontFamily: MyTextThemes._fontFamily, color: Color.fromRGBO(160, 160, 160, 1), fontWeight: FontWeight.w300),
-    errorSubText: TextStyle(fontSize: 12, fontFamily: MyTextThemes._fontFamily, color: Colors.red, fontWeight: FontWeight.w300),
-    placeholder: TextStyle(fontSize: 15, fontFamily: MyTextThemes._fontFamily, color: Color.fromRGBO(186, 186, 186, 1), fontWeight: FontWeight.w300),
-    active: TextStyle(fontSize: 20, fontFamily: MyTextThemes._fontFamily, color: Color.fromRGBO(174, 214, 64, 1), fontWeight: FontWeight.bold),
-    disabled: TextStyle(fontSize: 20, fontFamily: MyTextThemes._fontFamily, color: Colors.red, fontWeight: FontWeight.bold)
-  );
+      h1: TextStyle(
+          fontSize: 47,
+          fontFamily: MyTextThemes._fontFamily,
+          color: Color.fromRGBO(0, 0, 0, 1),
+          fontWeight: FontWeight.bold),
+      h2: TextStyle(
+          fontSize: 40,
+          fontFamily: MyTextThemes._fontFamily,
+          color: Color.fromRGBO(0, 0, 0, 1),
+          fontWeight: FontWeight.bold),
+      h3: TextStyle(
+          fontSize: 20,
+          fontFamily: MyTextThemes._fontFamily,
+          color: Color.fromRGBO(98, 98, 98, 1),
+          fontWeight: FontWeight.bold),
+      h4: TextStyle(
+          fontSize: 20,
+          fontFamily: MyTextThemes._fontFamily,
+          color: Color.fromRGBO(57, 57, 57, 1),
+          fontWeight: FontWeight.w300),
+      h5: TextStyle(
+          fontSize: 10,
+          fontFamily: MyTextThemes._fontFamily,
+          color: Color.fromRGBO(98, 98, 98, 1),
+          fontWeight: FontWeight.w300),
+      bodyText1: TextStyle(
+          fontSize: 20,
+          fontFamily: MyTextThemes._fontFamily,
+          color: Color.fromRGBO(0, 0, 0, 1),
+          fontWeight: FontWeight.bold),
+      bodyText2: TextStyle(
+          fontSize: 18,
+          fontFamily: MyTextThemes._fontFamily,
+          color: Color.fromRGBO(116, 116, 116, 1),
+          fontWeight: FontWeight.bold),
+      bodyText3: TextStyle(
+          fontSize: 17,
+          fontFamily: MyTextThemes._fontFamily,
+          color: Color.fromRGBO(103, 103, 103, 1),
+          fontWeight: FontWeight.w300),
+      buttonActionText1: TextStyle(
+          fontSize: 20,
+          fontFamily: MyTextThemes._fontFamily,
+          color: Colors.white,
+          fontWeight: FontWeight.w300),
+      buttonActionText2: TextStyle(
+          fontSize: 18,
+          fontFamily: MyTextThemes._fontFamily,
+          color: Colors.white,
+          fontWeight: FontWeight.w300),
+      buttonActionText3: TextStyle(
+          fontSize: 16,
+          fontFamily: MyTextThemes._fontFamily,
+          color: Colors.white,
+          fontWeight: FontWeight.w300),
+      buttonActionTextLight3: TextStyle(
+          fontSize: 16,
+          fontFamily: MyTextThemes._fontFamily,
+          color: Colors.black,
+          fontWeight: FontWeight.w300),
+      subtext: TextStyle(
+          fontSize: 15,
+          fontFamily: MyTextThemes._fontFamily,
+          color: Color.fromRGBO(160, 160, 160, 1),
+          fontWeight: FontWeight.w300),
+      errorSubText: TextStyle(
+          fontSize: 12,
+          fontFamily: MyTextThemes._fontFamily,
+          color: Colors.red,
+          fontWeight: FontWeight.w300),
+      placeholder: TextStyle(
+          fontSize: 15,
+          fontFamily: MyTextThemes._fontFamily,
+          color: Color.fromRGBO(186, 186, 186, 1),
+          fontWeight: FontWeight.w300),
+      active: TextStyle(
+          fontSize: 20,
+          fontFamily: MyTextThemes._fontFamily,
+          color: Color.fromRGBO(174, 214, 64, 1),
+          fontWeight: FontWeight.bold),
+      disabled: TextStyle(
+          fontSize: 20,
+          fontFamily: MyTextThemes._fontFamily,
+          color: Colors.red,
+          fontWeight: FontWeight.bold));
 
   static const darkMode = lightMode;
 
@@ -132,32 +218,31 @@ class MyTextThemes {
   final TextStyle buttonActionText1;
   final TextStyle buttonActionText2;
   final TextStyle buttonActionText3;
+  final TextStyle buttonActionTextLight3;
   final TextStyle formField1;
   final TextStyle subtext;
   final TextStyle errorSubText;
   final TextStyle placeholder;
   final TextStyle active;
   final TextStyle disabled;
-  
 
-  const MyTextThemes._({
-    this.h1,
-    this.h2,
-    this.h3,
-    this.h4,
-    this.h5,
-    this.bodyText1,
-    this.bodyText2,
-    this.bodyText3,
-    this.buttonActionText1,
-    this.buttonActionText2,
-    this.buttonActionText3,
-    this.formField1,
-    this.subtext,
-    this.errorSubText,
-    this.placeholder,
-    this.active,
-    this.disabled
-  });
-
+  const MyTextThemes._(
+      {this.h1,
+      this.h2,
+      this.h3,
+      this.h4,
+      this.h5,
+      this.bodyText1,
+      this.bodyText2,
+      this.bodyText3,
+      this.buttonActionText1,
+      this.buttonActionText2,
+      this.buttonActionText3,
+      this.buttonActionTextLight3,
+      this.formField1,
+      this.subtext,
+      this.errorSubText,
+      this.placeholder,
+      this.active,
+      this.disabled});
 }

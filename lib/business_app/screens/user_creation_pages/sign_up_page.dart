@@ -86,6 +86,7 @@ class _SignUpPageState extends State<SignUpPage> {
               SizedBox(height: 10,),
               StyleTextField.password(
                 controller: passwordController,
+                getErrorMessage: null,
               ),
               SizedBox(height: 10,),
               StyleTextField.password(

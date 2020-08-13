@@ -1,20 +1,22 @@
+import 'package:auto_size_text/auto_size_text.dart';
 import 'package:business_app/business_app/models/queues.dart';
 import 'package:business_app/theme/themes.dart';
 import 'package:flutter/material.dart';
+import 'package:path/path.dart';
+
+import '../../utils.dart';
 
 enum SlideableListCellSize { big, medium, small }
 
 class SlideableListCell extends StatelessWidget {
   static const double borderRadius = 20;
   final bool isSelected;
-  final bool showIfActiveText;
-  final String title;
-  final String subheading;
-  final String body;
+  final bool showSelectBorder;
   final String Function(bool) getPrimaryText;
   final String Function(bool) getSecondaryText;
   final Future<bool> Function(bool) onPrimarySwipe;
   final Future<bool> Function(bool) onSecondarySwipe;
+  final Widget Function(BuildContext, bool) getBody;
   final Function onTap;
   final SlideableListCellSize relativeSize;
 
@@ -30,6 +32,7 @@ class SlideableListCell extends StatelessWidget {
     return SlideableListCell(
       key: key,
       relativeSize: relativeSize ?? SlideableListCellSize.big,
+      showSelectBorder: false,
       isSelected: () {
         switch (queue.state) {
           case QueueState.active:
@@ -38,31 +41,77 @@ class SlideableListCell extends StatelessWidget {
             return false;
         }
       }(),
-      title: queue.name ?? "New Queue",
-      showIfActiveText: true,
-      subheading: (){
-        switch (queue.state) {
-          case QueueState.active:
-            //final numInLine = queue.numWaiting;
-            final numInLine = -1;
-            switch (numInLine) {
-              case 0:
-                return "Queue is Empty";
-              case 1:
-                return "1 Person is in Line";
-              default:
-                return "$numInLine People are in Line.";
-            }
-            break;
-          case QueueState.inactive:
-            return null;
-        }
-      }(),
-      body: queue.description ?? "Swipe from the left to delete this queue and swipe right to see more details.",
+      getBody: (context, isOpen) {
+        String subheading = (){
+          switch (queue.state) {
+            case QueueState.active:
+              final numWaiting = queue.numWaiting;
+              switch (numWaiting) {
+                case 0:
+                  return "Queue is Empty";
+                case 1:
+                  return "1 Person is in Line";
+                default:
+                  return "$numWaiting People are in Line.";
+              }
+              break;
+            case QueueState.inactive:
+              return null;
+          }
+        }();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: AutoSizeText(queue.name ?? "New Queue",
+                    maxLines: 2,
+                    textAlign: TextAlign.left,
+                    overflow: TextOverflow.ellipsis,
+                    style: MyStyles.of(context).textThemes.bodyText1
+                  ),
+                ),
+
+                Text(
+                  (isOpen) ? "Open" : "Closed",
+                  textAlign: TextAlign.end,
+                  maxLines: 1,
+                  style: (isOpen)
+                      ? MyStyles.of(context).textThemes.active
+                      : MyStyles.of(context)
+                          .textThemes
+                          .disabled,
+                )
+              ],
+            ),
+
+            if (subheading != null)
+                Container(
+                  padding: EdgeInsets.only(top: 5),
+                  child: Text(
+                    subheading,
+                    style: MyStyles.of(context).textThemes.bodyText2,
+                  ),
+                ),
+            
+            SizedBox(height: 5),
+
+            Text(
+              queue.description ?? "Swipe from the left to delete this queue and swipe right to see more details.",
+              maxLines: (relativeSize == SlideableListCellSize.small) ? 1 : null,
+              style: MyStyles.of(context).textThemes.bodyText3,
+            )
+          ]
+        );
+      },
       onPrimarySwipe: onActivate,
       onSecondarySwipe: onDelete,
       onTap: onTap,
-      getPrimaryText: (isSelected) => isSelected ? "Deactivate" : "Activate",
+      getPrimaryText: (isSelected) => isSelected ? "Closed" : "Open",
       getSecondaryText: (isSelected) => "Delete",
     );
   }
@@ -79,8 +128,9 @@ class SlideableListCell extends StatelessWidget {
     return SlideableListCell(
       key: key,
       relativeSize: relativeSize,
-      title: queueEntry.name,
-      body: queueEntry.note ?? "",
+      showSelectBorder: true,
+      // title: queueEntry.name,
+      // body: queueEntry.note ?? "",
       isSelected: (){
           switch (queueEntry.state) {
             case QueueEntryState.pendingNotification:
@@ -92,6 +142,51 @@ class SlideableListCell extends StatelessWidget {
               return false;
           }
         }(),
+      getBody: (context, isSelected) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              children: [
+                Column(
+                  children: [
+                    Text("${queueEntry.id}. ${queueEntry.name ?? "Person"}",
+                        textAlign: TextAlign.left,
+                        overflow: TextOverflow.ellipsis,
+                        style: MyStyles.of(context)
+                            .textThemes
+                            .bodyText1),
+                  ],
+                ),
+
+                Expanded(
+                  child: StreamBuilder<String>(
+                    initialData: queueEntry.getFormattedTimeSinceAdded(),
+                    stream: Stream.periodic(Duration(minutes: 1), (i) {
+                      return queueEntry.getFormattedTimeSinceAdded();
+                    }),
+                    builder: (context, snapshot) {
+                      return Text(
+                        "${snapshot.data}",
+                        textAlign: TextAlign.end,
+                        style: MyStyles.of(context).textThemes.bodyText2,
+                      );
+                    }
+                  ),
+                )
+              ],
+            ),
+
+            if (queueEntry.note != null)
+              Text(
+                queueEntry.note,
+                maxLines: (relativeSize == SlideableListCellSize.small) ? 1 : null,
+                style: MyStyles.of(context).textThemes.bodyText3,
+              )
+          ]
+        );
+      } ,
       onPrimarySwipe: onNotify,
       onSecondarySwipe: onDelete,
       onTap: onTap,
@@ -104,14 +199,12 @@ class SlideableListCell extends StatelessWidget {
       {
         Key key,
         this.relativeSize = SlideableListCellSize.big,
-        @required this.title,
-        this.subheading,
-        this.body,
-        this.showIfActiveText = false,
         this.isSelected = false,
         this.onPrimarySwipe,
         this.onSecondarySwipe,
         this.onTap,
+        this.getBody,
+        this.showSelectBorder,
         @required this.getPrimaryText,
         @required this.getSecondaryText,
       }
@@ -122,11 +215,10 @@ class SlideableListCell extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-          width: MediaQuery.of(context).size.width,
           child: Container(
             decoration: BoxDecoration(
               color: Colors.transparent,
-              border: (isSelected)
+              border: (isSelected && this.showSelectBorder)
                   ? Border.all(
                       width: 1, color: MyStyles.of(context).colors.accent)
                   : null,
@@ -143,11 +235,20 @@ class SlideableListCell extends StatelessWidget {
               borderRadius: BorderRadius.all(Radius.circular(borderRadius)),
               child: Dismissible(
                 key: GlobalKey(),
-                confirmDismiss: (direction) {
-                  if (direction == DismissDirection.startToEnd) {
-                    return onSecondarySwipe(isSelected);
-                  } else {
-                    return onPrimarySwipe(isSelected);
+                confirmDismiss: (direction) async {
+                  final Future<bool> Function(bool) function = (){
+                    if (direction == DismissDirection.startToEnd) {
+                      return onSecondarySwipe;
+                    } else {
+                      return onPrimarySwipe;
+                    }
+                  }();
+                  
+                  try {
+                    return await function(isSelected);
+                  } catch (error) {
+                    Utils.of(context).toastMessage(error.toString());
+                    return false;
                   }
                 },
                 
@@ -185,58 +286,11 @@ class SlideableListCell extends StatelessWidget {
                   child: Container(
                     padding: EdgeInsets.only(bottom: (relativeSize == SlideableListCellSize.big) ? 20 : 0),
                     child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        children: <Widget>[
-                          Row(
-                            children: [
-                              Text(title,
-                                  textAlign: TextAlign.left,
-                                  style: MyStyles.of(context)
-                                      .textThemes
-                                      .bodyText1),
-            
-                              () {
-                                if (showIfActiveText) {
-                                  return Expanded(
-                                    child: Text(
-                                      (isSelected) ? "Active" : "Inactive",
-                                      textAlign: TextAlign.end,
-                                      style: (isSelected)
-                                          ? MyStyles.of(context).textThemes.active
-                                          : MyStyles.of(context)
-                                              .textThemes
-                                              .disabled,
-                                    ),
-                                  );
-                                } else {
-                                  return Container();
-                                }
-                              }()
-                            ],
-                          ),
-
-                          () {
-                            if (subheading != null) {
-                              return Container(
-                                padding: EdgeInsets.only(top: 5),
-                                child: Text(
-                                  subheading,
-                                  style: MyStyles.of(context).textThemes.bodyText2,
-                                ),
-                              );
-                            } else {
-                              return Container();
-                            }
-                          }(),
-                          
-                          SizedBox(height: 5),
-                          Text(
-                            body,
-                            maxLines: (relativeSize == SlideableListCellSize.small) ? 1 : null,
-                            style: MyStyles.of(context).textThemes.bodyText3,
-                          )
-                        ]),
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        getBody(context, isSelected)
+                      ],
+                    ),
                   ),
                 ),
               ),

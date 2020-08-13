@@ -1,5 +1,6 @@
 
 import 'package:business_app/theme/themes.dart';
+import 'package:business_app/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -41,6 +42,7 @@ class StyleTextField extends StatelessWidget {
     StyleTextFieldStatus status = StyleTextFieldStatus.neutral,
     Function(String) onChanged,
     Function(String) onSubmitted,
+    bool isRequired = true,
   }) {
     return StyleTextField(
       controller: controller,
@@ -49,10 +51,9 @@ class StyleTextField extends StatelessWidget {
       status: status,
       onChanged: onChanged,
       onSubmitted: onSubmitted,
-      placeholderText: "Email...",
+      placeholderText: isRequired ? "email..." : "email (Optional)",
       getErrorMessage: (text) {
-        bool isValidEmail = RegExp(r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+").hasMatch(text);
-        if (isValidEmail) {
+        if (Utils.isValidEmail(text)) {
           return null;
         } else {
           return "Email is not valid";
@@ -92,7 +93,7 @@ class StyleTextField extends StatelessWidget {
 
   factory StyleTextField.phoneNumber({
     TextEditingController controller,
-    String paceholderText,
+    bool isRequired = true,
     StyleTextFieldStatus status = StyleTextFieldStatus.neutral,
     Function(String) onChanged,
     Function(String) onSubmitted,
@@ -106,7 +107,14 @@ class StyleTextField extends StatelessWidget {
       status: status,
       onChanged: onChanged,
       onSubmitted: onSubmitted,
-      placeholderText: "Phone Number...",
+      placeholderText: "Phone Number ${isRequired ? "" : "(Optional)"}",
+      getErrorMessage: (text) {
+        if (text.length != 10) {
+          return "Not a valid phone number";
+        } else {
+          return null;
+        }
+      },
       maxLines: 1,
     );
   }
@@ -147,76 +155,79 @@ class StyleTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: Column(
-        children: [
-          Container(
-            alignment: textFieldFontAlignment,
-            decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                color: MyStyles.of(context).colors.background1,
-                border: Border.all(color: borderColor),
-                boxShadow: [
-                  BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 5,
-                      offset: Offset(0, 2))
-                ]),
-            padding: insets,
-            child: FormField<String>(
-              validator: getErrorMessage,
-              initialValue: placeholderText,
-              autovalidate: true,
-              builder: (FormFieldState<String> state) {
-                return Column(
-                  children: [
-                    TextFormField(
-                      controller: controller,
-                      keyboardType: textInputType,
-                      obscureText: obscureText,
-                      inputFormatters: inputFormatters,
-                      onChanged: (text) {
-                        if (onChanged != null) {
-                          onChanged(text);
-                        }
-                        state.didChange(text);
-                      },
-                      onFieldSubmitted: onSubmitted,
-                      maxLines: maxLines,
-                      cursorColor: Colors.blue,
-                      style: MyStyles.of(context)
-                          .textThemes
-                          .placeholder
-                          .copyWith(color: Colors.grey[900]),
-                      textAlign: TextAlign.left,
-                      textAlignVertical: TextAlignVertical.center,
-                      decoration: InputDecoration(
-                        prefixIcon: (icon != null)
-                            ? Icon(icon, color: iconColor)
-                            : null,
-                        hintStyle: MyStyles.of(context).textThemes.placeholder,
-                        border: InputBorder.none,
-                        hintText: placeholderText,
-                      )
-                    ),
+    return Container(
+      constraints: BoxConstraints(maxWidth: 300),
+      child: Material(
+        color: Colors.transparent,
+        child: Column(
+          children: [
+            Container(
+              alignment: textFieldFontAlignment,
+              decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  color: MyStyles.of(context).colors.background1,
+                  border: Border.all(color: borderColor),
+                  boxShadow: [
+                    BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 5,
+                        offset: Offset(0, 2))
+                  ]),
+              padding: insets,
+              child: FormField<String>(
+                validator: getErrorMessage,
+                initialValue: placeholderText,
+                autovalidate: true,
+                builder: (FormFieldState<String> state) {
+                  return Column(
+                    children: [
+                      TextFormField(
+                        controller: controller,
+                        keyboardType: textInputType,
+                        obscureText: obscureText,
+                        inputFormatters: inputFormatters,
+                        onChanged: (text) {
+                          if (onChanged != null) {
+                            onChanged(text);
+                          }
+                          state.didChange(text);
+                        },
+                        onFieldSubmitted: onSubmitted,
+                        maxLines: maxLines,
+                        cursorColor: Colors.blue,
+                        style: MyStyles.of(context)
+                            .textThemes
+                            .placeholder
+                            .copyWith(color: Colors.grey[900]),
+                        textAlign: TextAlign.left,
+                        textAlignVertical: TextAlignVertical.center,
+                        decoration: InputDecoration(
+                          prefixIcon: (icon != null)
+                              ? Icon(icon, color: iconColor)
+                              : null,
+                          hintStyle: MyStyles.of(context).textThemes.placeholder,
+                          border: InputBorder.none,
+                          hintText: placeholderText,
+                        )
+                      ),
 
-                    if(state.errorText != null && controller.text.isNotEmpty)
-                      Container(
-                        padding: EdgeInsets.only(bottom: 5),
-                        alignment: Alignment.center,
-                        child: Text(
-                          state.errorText,
-                          textAlign: TextAlign.center,
-                          style: MyStyles.of(context).textThemes.errorSubText
-                        ),
-                      )
-                  ],
-                );
-              },
+                      if(state.errorText != null && controller.text.isNotEmpty)
+                        Container(
+                          padding: EdgeInsets.only(bottom: 5),
+                          alignment: Alignment.center,
+                          child: Text(
+                            state.errorText,
+                            textAlign: TextAlign.center,
+                            style: MyStyles.of(context).textThemes.errorSubText
+                          ),
+                        )
+                    ],
+                  );
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -6,8 +6,11 @@ import 'package:flutter/material.dart';
 
 import 'package:business_app/business_app/services/services.dart';
 import 'package:business_app/services/services.dart';
+import 'package:intl/intl.dart';
 
-BusinessAppServer server = new BusinessAppServer();
+import '../../utils.dart';
+
+// BusinessAppServer server = new BusinessAppServer();
 
 enum QueueEntryState {
   notified,
@@ -17,40 +20,42 @@ enum QueueEntryState {
   deleted
 }
 
-class QueuePerson with ChangeNotifier{
+class QueuePerson with ChangeNotifier {
   int id;
   String _name;
   String _note;
   String _phone;
-  String _time;
+  DateTime _time;
 
   String get name => _name;
   String get note => _note;
+  set note(note) {
+    _updateFromData(note: note);
+  }
+
   String get phone => _phone;
-  String get time => _time;
+  DateTime get time => _time;
 
   QueueEntryState _state;
   QueueEntryState get state => _state;
+
   set state(QueueEntryState newValue) {
     _state = newValue;
     notifyListeners();
   }
 
-  void update(Map<String, dynamic> info){
-    _updateFromData(
-      name: info["name"],
-      note: info["note"],
-      phone: info["phone"],
-      time: info["created"]
-    );
+  String get formattedTime => DateFormat.jm().format(time.toLocal());
+
+  Duration getDurationSinceAdded() {
+    return DateTime.now().difference(time);
   }
 
-  Future<void> updateToServer({String name, String note, String phone, String time}) async {
-    _updateFromData(name: name, note: note, phone: phone, time: time);
-    await server.updatePerson(this);
+  String getFormattedTimeSinceAdded() {
+    return Utils.formatDuration(getDurationSinceAdded());
   }
 
-  void _updateFromData({String name, String note, String phone, String time}) {
+  void _updateFromData(
+      {String name, String note, String phone, DateTime time}) {
     _name = name ?? _name;
     _note = note ?? _note;
     _phone = phone ?? _phone;
@@ -58,139 +63,213 @@ class QueuePerson with ChangeNotifier{
     notifyListeners();
   }
 
+  static QueuePerson fromMap(Map<String, dynamic> map) {
+    final utcTime = DateTime.parse(map["created"]);
+
+    QueueEntryState state;
+
+    if (map["notified"] != null) {
+      state = (map["notified"] as int) == 0
+          ? QueueEntryState.waiting
+          : QueueEntryState.notified;
+    } else {
+      state = QueueEntryState.waiting;
+    }
+
+    return QueuePerson(
+        id: map["id"],
+        name: map["name"],
+        note: map["note"],
+        phone: map["phone"],
+        state: state,
+        time: DateTime.utc(utcTime.year, utcTime.month, utcTime.day,
+            utcTime.hour, utcTime.minute, utcTime.second));
+  }
+
   QueuePerson({
     @required this.id,
     String name,
     String note,
+    String phone,
+    DateTime time,
     QueueEntryState state = QueueEntryState.waiting,
   }) {
     this._name = name;
     this._note = note;
     this._state = state;
     this._phone = phone;
+    this._time = time ?? DateTime.now();
   }
 }
 
-class QueuePeople with ChangeNotifier {
-  final int id;
-  // this is an ordered map
-  var theline = new SplayTreeMap<int, QueuePerson>();
-  Iterable<QueuePerson> get body => theline.values;
-  BusinessAppServer server;
-
-  QueuePeople({
-    this.id,
-    @required this.server,
-  }) {}
-
-  void connectSocket () {
-    print("update $id");
-    BusinessAppServer.socket.on("update $id", (data) {
-        print("hi");
-        updateFromSever(data["line"]);
-        notifyListeners();
-    });
-  }
-
-  void updateFromSever(List<dynamic> serverLine){
-    for(var i=0; i < serverLine.length; i++){
-      int k = serverLine[i]["id"];
-      if(!theline.containsKey(k)){
-        theline[k]=new QueuePerson(id: k);
-      }
-      theline[k].update(serverLine[i]);
-    }
-    // delete anything not on server anymore
-    var keys = theline.keys;
-    var toRemove = [];
-    for(var k in keys){
-      bool there = false;
-      for(var j=0; j<serverLine.length; j++){
-        if(serverLine[j]["id"]==k){
-          there=true;
-          break;
-        }
-      }
-      if(!there) toRemove.add(k);
-    }
-
-    toRemove.forEach((k) {theline.remove(k);});
-  }
-
-  int get numWaiting {
-    return _getNumOfState(QueueEntryState.waiting);
-  }
-
-  int get numNotified {
-    return _getNumOfStates([QueueEntryState.notified, QueueEntryState.pendingNotification]);
-  }
-
-  int get numCompleted {
-    return _getNumOfStates([QueueEntryState.notified, QueueEntryState.pendingDeletion]);
-  }
-
-  int _getNumOfStates(List<QueueEntryState> states) {
-    return theline.keys.where((k) => states.contains(theline[k].state)).length;
-  }
-
-  int _getNumOfState(QueueEntryState state) {
-    return _getNumOfStates([state]);
-  }
-
-  void remove(int personId) async{
-    if(!theline.containsKey(personId)){
-      print("Invalid id to remove");
-      return;
-    }
-
-    await server.deletePerson(id, personId);
-    theline.remove(personId);
-    notifyListeners();
-  }
- 
-  void add2Queue({@required String name, @required int id, @required String phone}) {
-    theline.putIfAbsent(-1, () => QueuePerson(id: -1, name: name));
-    server.addToQueue(name: name, phoneNumber: phone, qid: id);
-    notifyListeners();
-  }
-}
-
-enum QueueState {
-  active, inactive
-}
+enum QueueState { active, inactive }
 
 class Queue with ChangeNotifier {
   final int id;
   String _name;
   String _description;
   String _code;
-  QueueState _state;
-  QueuePeople people;
 
   String get name => _name;
   String get description => _description;
   String get code => _code;
+
+  int get length => body.length;
+
+  QueueState _state;
   QueueState get state => _state;
   set state(QueueState newValue) {
+    if (_state != newValue && newValue == QueueState.active) {
+      _numCompleted = 0;
+    }
+
     _state = newValue;
     notifyListeners();
   }
 
-  static Queue fromMap(Map<String, dynamic> map) {
-    if (map == null) return null;
-  
-    return Queue(
-      id: map['qid'],
-      name: map['qname'],
-      description: map['description'],
-      code: map['code'],
-    );
+  List<QueuePerson> body = [];
+
+  int _numCompleted = 0;
+  int get numCompleted => _numCompleted;
+
+  int get numWaiting {
+    return _getNumOfState(QueueEntryState.waiting);
   }
 
-  void update(Queue info){
+  int get numNotified {
+    return _getNumOfStates(
+        [QueueEntryState.notified, QueueEntryState.pendingNotification]);
+  }
+
+  int get numCurrentlyOn {
+    return numWaiting + numNotified;
+  }
+
+  static Queue fromMap(Map<String, dynamic> map) {
+    if (map == null) return null;
+
+    return Queue(
+        id: map['qid'],
+        name: map['qname'],
+        description: map['description'],
+        code: map['code'],
+        state: map['active'] == 1 ? QueueState.active : QueueState.inactive);
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'qid': id,
+      'qname': name,
+      'description': description,
+      'code': code,
+      'active': (state == QueueState.active) ? 1 : 0,
+    };
+  }
+
+  void connectSocket() {
+    print("update $id");
+    BusinessAppServer.socket.on("update $id", (data) {
+      List<Map<String, dynamic>> serverLineAsMaps =
+          (data["line"] as List<dynamic>)
+              .map((e) => e as Map<String, dynamic>)
+              .toList();
+      List<QueuePerson> serverLine =
+          serverLineAsMaps.map((e) => QueuePerson.fromMap(e)).toList();
+
+      if (serverLine.length == 0) {
+        print("something");
+      }
+
+      updateFromSever(serverLine);
+    });
+  }
+
+  int _getNumOfStates(List<QueueEntryState> states) {
+    return body.where((k) => states.contains(k.state)).toList().length;
+  }
+
+  int _getNumOfState(QueueEntryState state) {
+    return _getNumOfStates([state]);
+  }
+
+  void updateFromSever(List<QueuePerson> serverLine) {
+    body = serverLine;
+    notifyListeners();
+  }
+
+  void toggleState() {
+    this.state = this.state == QueueState.active
+        ? QueueState.inactive
+        : QueueState.active;
+  }
+
+  Future<void> remove(int personId) async {
+    assert(body.where((person) => person.id == personId).length == 1);
+    body.removeWhere((element) => element.id == personId);
+    await BusinessAppServer.deletePerson(id, personId);
+    _numCompleted += 1;
+    notifyListeners();
+  }
+
+  Future<void> notify(int personId) async {
+    final personIndex = body.indexWhere((element) => element.id == personId);
+    assert(personIndex != -1);
+
+    final oldState = body[personIndex].state;
+
+    body[personIndex].state = QueueEntryState.pendingNotification;
+
+    try {
+      await BusinessAppServer.notifyPerson(id, personId);
+      body[personIndex].state = QueueEntryState.notified;
+    } catch (error) {
+      body[personIndex].state = oldState;
+      throw error;
+    }
+
+    notifyListeners();
+  }
+
+  Future<void> reorderPerson(int oldIndex, int newIndex) async {
+    BusinessAppServer.reorderPerson(
+        person: body[oldIndex],
+        qid: this.id,
+        oldPersonId: body[oldIndex].id,
+        newPersonId: body[newIndex].id);
+
+    final temp = body[oldIndex];
+    body.removeAt(oldIndex);
+
+    if (newIndex == body.length) {
+      body.add(temp);
+    } else {
+      body.insert(newIndex, temp);
+    }
+
+    notifyListeners();
+  }
+
+  Future<void> addPerson(
+      {@required String name, @required int id, String phone}) async {
+    if (body.indexWhere((element) => element.id == id) == -1) {
+      body.add(QueuePerson(id: -1, name: name, phone: phone));
+      notifyListeners();
+    }
+
+    await BusinessAppServer.addToQueue(name: name, phoneNumber: phone, qid: id);
+  }
+
+  void update(Queue info) {
     _name = info.name ?? _name;
     _description = info.description ?? _description;
     _code = info.code ?? _code;
+    state = state ?? info.state;
+    notifyListeners();
+  }
+
+  void _updateFromData({String name, String desc}) {
+    _name = name ?? _name;
+    _description = desc ?? _description;
     notifyListeners();
   }
 
@@ -198,74 +277,47 @@ class Queue with ChangeNotifier {
     BusinessAppServer.joinRoom(id);
   }
 
-  Queue({
-    this.id,
-    String name,
-    String description,
-    QueueState state = QueueState.inactive,
-    String code
-  }){
+  Future<void> updateQueue({String name, String desc}) async {
+    _updateFromData(name: name, desc: desc);
+    await BusinessAppServer.updateQueue(this);
+  }
+
+  Queue(
+      {this.id,
+      String name,
+      String description,
+      QueueState state = QueueState.inactive,
+      String code}) {
     this._name = name;
     this._description = description;
     this._state = QueueState.inactive;
     this._code = code;
-    this.people = QueuePeople(id: this.id, server: server);
   }
 }
 
-//TODO: Someone please make sure this is ok
 class AllQueuesInfo with ChangeNotifier {
-  final BusinessAppServer server;
-  var queues = new Map<int, Queue>();
-  Iterable<Queue> get body => queues.values;
+  List<Queue> _queues = [];
+  List<Queue> get queues => _queues;
 
-  Future<void> retrieveServer() async {
-    //This now returns a list of queues instead of maps
-    var serverQueues = await server.getListofQueues();
-
-    // update info based on server
-    for(var i=0; i<serverQueues.length; i++){
-      int k = serverQueues[i].id;
-      if(!queues.containsKey(k)){
-        queues[k]=new Queue(id: k);
-      }
-      queues[k].update(serverQueues[i]);
-    }
-    // delete anything not on server anymore
-    var keys = queues.keys;
-    var toRemove = [];
-    for(var k in keys){
-      bool there = false;
-      for(var j=0; j<serverQueues.length; j++){
-        if(serverQueues[j].id==k){
-          there=true;
-          break;
-        }
-      }
-      if(!there) toRemove.add(k);
-    }
-
-    toRemove.forEach((element) {queues.remove(element as int);});
+  Future<void> refresh() async {
+    this._queues = await BusinessAppServer.getListofQueues();
+    notifyListeners();
   }
 
-  //TODO: Someone please make sure this is ok
-  Future<void> makeQueue(String name, String description) async {
-    Queue queue = await server.makeQueue(name, description);
-    queues[queue.id] = queue;
-    // int k = n["qid"];
-    // queues[k] = new Queue(id: k);
-    // queues[k].update(n);
+  Future<void> makeQueue(
+      {String name, String description}) async {
+    Queue queue = await BusinessAppServer.makeQueue(name, description);
+    _queues.add(queue);
     notifyListeners();
   }
 
   Future<void> deleteQueue(int qid) async {
-    await server.deleteQueue(qid);
-  }
+    final queue = _queues.where((element) => element.id == qid).toList()[0];
 
-  Future<void> refresh() async {
-    retrieveServer();
+    await BusinessAppServer.deleteQueue(queue);
+    _queues.removeWhere((element) => element.id == qid);
     notifyListeners();
   }
 
-  AllQueuesInfo({@required this.server});
+  AllQueuesInfo();
 }

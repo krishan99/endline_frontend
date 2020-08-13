@@ -1,3 +1,7 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+
 import 'package:business_app/components/components.dart';
 import 'package:business_app/components/shake_widget.dart';
 import 'package:business_app/components/textfields.dart';
@@ -5,12 +9,14 @@ import 'package:business_app/services/services.dart';
 import 'package:business_app/theme/themes.dart';
 import 'package:business_app/user_app/components/components.dart';
 import 'package:business_app/user_app/services/services.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
 
 class HomePage extends StatefulWidget {
   String errorMessage;
+
+  HomePage({
+    Key key,
+    this.errorMessage,
+  }) : super(key: key);
 
   @override
   _HomePageState createState() => _HomePageState();
@@ -83,35 +89,30 @@ class _HomePageState extends State<HomePage> {
                   padding: EdgeInsets.all(15),
                   color: Colors.transparent,
                   constraints: BoxConstraints(maxWidth: 200),
-                  child: Consumer<UAppServer>(builder: (context, server, _) {
-                    return LoadingButton(
-                      defaultWidget: Text("Submit",
-                          style: MyStyles.of(context)
-                              .textThemes
-                              .buttonActionText2),
-                      onPressed: () async {
-                        final apiResponse =
-                          await ApiResponse.fromFunction(() async {
-                          return await server.getQueueReqs(
-                            code: codeController.text);
-                          }
-                        );
+                  child: LoadingButton(
+                    defaultWidget: Text("Submit",
+                        style:
+                            MyStyles.of(context).textThemes.buttonActionText2),
+                    onPressed: () async {
+                      final apiResponse =
+                        await ApiResponse.fromFunction(() async {
+                          return await UAppServer.getQueueReqs(code: codeController.text);
+                        });
 
-                        if (apiResponse.isError) {
-                          setState(() {
-                            widget.errorMessage = apiResponse.message;
-                          });
+                      if (apiResponse.isError) {
+                        setState(() {
+                          widget.errorMessage = apiResponse.message;
+                        });
+                      }
+
+                      return () {
+                        if (apiResponse.isSuccess) {
+                          Navigator.of(context).pushNamed("/join_queue",
+                              arguments: apiResponse.data);
                         }
-
-                        return () {
-                          if (apiResponse.isSuccess) {
-                            Navigator.of(context).pushNamed("/join_queue",
-                                arguments: apiResponse.data);
-                          }
-                        };
-                      },
-                    );
-                  }),
+                      };
+                    },
+                  ),
                 ),
 
                 // SizedBox(height: 20),

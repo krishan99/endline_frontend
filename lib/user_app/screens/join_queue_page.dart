@@ -32,109 +32,136 @@ class _JoinQueuePageState extends State<JoinQueuePage> {
   Widget build(BuildContext context) {
     return TappableGradientScaffold(
         body: Stack(
-        children: [
-          Center(
-            child: Container(
-              width: 300,
-              height: 400,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[
-                  Text(
-                    "EndLine",
-                    style: MyStyles.of(context)
-                        .textThemes
-                        .h1
-                        .copyWith(color: Colors.white),
-                    textAlign: TextAlign.center,
-                  ),
-                  Container(
-                    decoration: BoxDecoration(boxShadow: [
-                      BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 5,
-                          offset: Offset(0, 2))
-                    ]),
-                    child: Container(
-                      decoration: BoxDecoration(color: MyStyles.of(context).colors.accent),
+      children: [
+        Center(
+          child: Container(
+            width: 300,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                Text(
+                  "EndLine",
+                  style: MyStyles.of(context)
+                      .textThemes
+                      .h1
+                      .copyWith(color: Colors.white),
+                  textAlign: TextAlign.center,
+                ),
+                Container(
+                  decoration: BoxDecoration(boxShadow: [
+                    BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 5,
+                        offset: Offset(0, 2))
+                  ]),
+                  child: Container(
+                      decoration: BoxDecoration(
+                          color: MyStyles.of(context).colors.accent),
                       padding: EdgeInsets.all(5),
                       child: Text(
-                          widget.reqs.code,
-                          textAlign: TextAlign.center,
-                          style: MyStyles.of(context)
-                              .textThemes
-                              .bodyText2
-                              .copyWith(color: Colors.white),
-                        )
-                    ),
-                  ),
-                  SizedBox(height: columnSpacing,),
-                  Text(
-                    widget.reqs.businessName ?? "Could Not Get Business Name",
-                    style: MyStyles.of(context)
-                        .textThemes
-                        .h3
-                        .copyWith(color: Colors.white),
+                        widget.reqs.code,
+                        textAlign: TextAlign.center,
+                        style: MyStyles.of(context)
+                            .textThemes
+                            .bodyText2
+                            .copyWith(color: Colors.white),
+                      )),
+                ),
+                SizedBox(
+                  height: columnSpacing,
+                ),
+                Text(
+                  widget.reqs.businessName ?? "Could Not Get Business Name",
+                  style: MyStyles.of(context)
+                      .textThemes
+                      .h3
+                      .copyWith(color: Colors.white),
+                  textAlign: TextAlign.center,
+                ),
+                Container(
+                  padding: EdgeInsets.all(5),
+                  child: Text(
+                    widget.reqs.queueDescription,
+                    style: MyStyles.of(context).textThemes.bodyText3.copyWith(color: Colors.white),
                     textAlign: TextAlign.center,
                   ),
-                  SizedBox(height: columnSpacing,),
-                  if (widget.reqs.needsName)
-                    StyleTextField(
-                      controller: fullNameController,
-                      placeholderText: "Full Name"
-                    ),
-                    SizedBox(height: columnSpacing,),
-                  
-                  if (widget.reqs.needsPhoneNumber)
-                    StyleTextField.phoneNumber(
-                      controller: phoneNumberController,
-                    ),
-                    SizedBox(height: columnSpacing,),
-
-                  StyleTextField(
+                ),
+                SizedBox(
+                  height: columnSpacing,
+                ),
+                StyleTextField(
+                    controller: fullNameController,
+                    placeholderText:
+                        "Full Name ${widget.reqs.needsName ? "" : "(Optional)"}"),
+                SizedBox(
+                  height: columnSpacing,
+                ),
+                StyleTextField.phoneNumber(
+                  controller: phoneNumberController,
+                  isRequired: widget.reqs.needsPhoneNumber,
+                ),
+                SizedBox(
+                  height: columnSpacing,
+                ),
+                StyleTextField(
                     controller: notesController,
-                    placeholderText: "Notes (Optional)"
-                  ),
-                  SizedBox(height: columnSpacing,),
-                  Container(
-                    padding: EdgeInsets.fromLTRB(50, 0, 50, 0),
-                    color: Colors.transparent,
-                    child: Consumer<UAppServer>(
-                      builder: (context, server, _) {
-                        return LoadingButton(
-                          defaultWidget: Text("Submit",
-                          style: MyStyles.of(context).textThemes.buttonActionText2),
-                          onPressed: () async {
-                            ApiResponse<void> apiResponse = await ApiResponse.fromFunction(() async {
-                                await server.addToQueue(
-                                  qid: widget.reqs.qid,
-                                  name: fullNameController.text, 
-                                  phoneNumber: phoneNumberController.text
-                                );
-                              }
-                            );
+                    placeholderText: "Notes (Optional)"),
+                SizedBox(
+                  height: columnSpacing,
+                ),
+                Container(
+                  padding: EdgeInsets.fromLTRB(50, 0, 50, 0),
+                  color: Colors.transparent,
+                  child: LoadingButton(
+                    defaultWidget: Text("Submit",
+                        style:
+                            MyStyles.of(context).textThemes.buttonActionText2),
+                    onPressed: () async {
+                      ApiResponse<void> apiResponse =
+                        await ApiResponse.fromFunction(() async {
+                          if (widget.reqs.needsName &&
+                              fullNameController.text.isEmpty) {
+                            throw CustomException("You must enter a name.");
+                          }
 
-                            if (apiResponse.isError) {
-                              Toast.show(apiResponse.message, context, duration: Toast.LENGTH_LONG, gravity:  Toast.BOTTOM);
+                          if (widget.reqs.needsPhoneNumber) {
+                            if (phoneNumberController.text.isEmpty) {
+                              throw CustomException(
+                                  "You must enter a phone number.");
+                            } else if (phoneNumberController.text.length != 10) {
+                              throw CustomException(
+                                  "You must enter a valid phone number.");
                             }
+                          }
 
-                            return (){
-                              if (apiResponse.isSuccess) {
-                                  Navigator.of(context).pushNamed("/thankyou");                                 
-                              }
-                            };
-                          },
-                        );
-                      },
-                    ),
+                          await UAppServer.addToQueue(
+                            qid: widget.reqs.qid,
+                            name: fullNameController.text,
+                            note: notesController.text,
+                            phoneNumber: phoneNumberController.text
+                          );
+                        }
+                      );
+
+                      if (apiResponse.isError) {
+                        Toast.show(apiResponse.message, context,
+                            duration: Toast.LENGTH_LONG, gravity: Toast.BOTTOM);
+                      }
+
+                      return () {
+                        if (apiResponse.isSuccess) {
+                          Navigator.of(context).pushNamed("/thankyou");
+                        }
+                      };
+                    },
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
-        ],
-      )
-    );
+        ),
+      ],
+    ));
   }
 }

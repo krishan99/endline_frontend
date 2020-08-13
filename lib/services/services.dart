@@ -41,26 +41,54 @@ class NotFoundException extends MyServerException {
   NotFoundException(String cause) : super(cause);
 }
 
-class FirebaseServerException extends MyServerException {
-  FirebaseServerException(String cause) : super(cause);
+class InvalidEmailException extends MyServerException {
+  InvalidEmailException({String cause}) : super(cause ?? "Your email address appears to be malformed.");
+}
+
+class InvalidPasswordException extends MyServerException {
+  InvalidPasswordException({String cause}) : super(cause ?? "Your password is wrong.");
+}
+
+class EmailAlreadyInUseException extends MyServerException {
+  EmailAlreadyInUseException({String cause}) : super(cause ?? "There's already an account associated with this email.");
+}
+
+class UserNotFoundException extends MyServerException {
+  UserNotFoundException({String cause}) : super(cause ?? "User with this email doesn't exist.");
+}
+
+class UserDisabledException extends MyServerException {
+  UserDisabledException({String cause}) : super(cause ?? "User with this email has been disabled.");
+}
+
+class TooManyRequestsException extends MyServerException {
+  TooManyRequestsException({String cause}) : super(cause ?? "Too many requests. Try again later.");
+}
+
+class OperationNotAllowedException extends MyServerException {
+  OperationNotAllowedException({String cause}) : super(cause ?? "Signing in with Email and Password is not enabled.");
 }
 
 class MyServer {
-  static const String path = true
+  static const bool USE_LOCAL = false;
+  static const String socketPath = USE_LOCAL ? "http://0.0.0.0:8000/" : 'http://3.129.96.170:81';
+  static const String path = USE_LOCAL
       ? "http://0.0.0.0:8000/"
-      : "http://ec2-18-221-212-236.us-east-2.compute.amazonaws.com/";
+      : "https://krishan.io/";
   static const Duration timeout =
       Duration(seconds: Foundation.kDebugMode ? 10 : 10);
 
-  static Map<String, String> headers = <String, String>{
+  static Map<String, String> defaultHeaders = <String, String>{
     'Content-Type': 'application/json; charset=UTF-8',
   };
 
-  String _getURL({@required String route}) {
+  static Map<String, String> headers = defaultHeaders;
+
+  static String _getURL({@required String route}) {
     return "$path$route";
   }
 
-  Future<Map<String, dynamic>> post(String route, {@required Map body}) async {
+  static Future<Map<String, dynamic>> post(String route, {@required Map body}) async {
     final url = _getURL(route: route);
 
     // await Future.delayed(Duration(seconds: 3));
@@ -73,7 +101,11 @@ class MyServer {
     return getMap(response);
   }
 
-  Future<Map<String, dynamic>> get(String route) async {
+  static void resetHeaders() {
+    headers = defaultHeaders;
+  }
+
+  static Future<Map<String, dynamic>> get(String route) async {
     final url = _getURL(route: route);
 
     // await Future.delayed(Duration(seconds: 3));
@@ -88,7 +120,7 @@ class MyServer {
     return getMap(response);
   }
 
-  Map<String, dynamic> getMap(http.Response r) {
+  static Map<String, dynamic> getMap(http.Response r) {
     if (r.statusCode == 500) {
       throw MyServerException("Server Error");
     }
@@ -120,7 +152,7 @@ class MyServer {
     }
   }
 
-  void updateCookie(http.Response response) {
+  static void updateCookie(http.Response response) {
     String rawCookie = response.headers['set-cookie'];
     if (rawCookie != null) {
       int index = rawCookie.indexOf(';');
@@ -129,12 +161,12 @@ class MyServer {
     }
   }
 
-  MyServer();
+  // MyServer._();
 }
 
 extension QueueRequests on MyServer {
-  Future<Queue> getQueue({@required qid}) async {
-    Map<String, dynamic> body = await get("api/v1/queue/retrieve");
+  static Future<Queue> getQueue({@required qid}) async {
+    Map<String, dynamic> body = await MyServer.get("api/v1/queue/retrieve");
     return Queue.fromMap(body);
   }
 }

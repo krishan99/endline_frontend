@@ -9,23 +9,23 @@ import 'package:business_app/theme/themes.dart';
 class TappableGradientScaffold extends StatelessWidget {
   final Widget body;
 
-  const TappableGradientScaffold({Key key, @required this.body}) : super(key: key);
+  const TappableGradientScaffold({Key key, @required this.body})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
-          gradient: MyStyles.of(context).colors.accentGradient
-        ),
-        child: TappableFullScreenView(body: body,)
-      ),
+          decoration: BoxDecoration(
+              gradient: MyStyles.of(context).colors.accentGradient),
+          child: TappableFullScreenView(
+            body: body,
+          )),
     );
   }
 }
 
 class TappableFullScreenView extends StatelessWidget {
-
   final Widget body;
 
   const TappableFullScreenView({
@@ -40,11 +40,10 @@ class TappableFullScreenView extends StatelessWidget {
         height: MediaQuery.of(context).size.height,
         width: MediaQuery.of(context).size.width,
         child: GestureDetector(
-          onTap: (){FocusScope.of(context).requestFocus(new FocusNode());},
-          child: SafeArea(
-            child: body
-          )
-        ),
+            onTap: () {
+              FocusScope.of(context).requestFocus(new FocusNode());
+            },
+            child: SafeArea(child: body)),
       ),
     );
   }
@@ -58,27 +57,35 @@ class LoadingButton extends StatelessWidget {
   final Widget defaultWidget;
   final Function onPressed;
 
-  const LoadingButton({Key key, this.height, this.width, this.gradient, this.color, this.defaultWidget, this.onPressed}) : super(key: key); 
+  const LoadingButton(
+      {Key key,
+      this.height,
+      this.width,
+      this.gradient,
+      this.color,
+      this.defaultWidget,
+      this.onPressed})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return ActionButton(
       gradient: gradient,
       color: color ?? Colors.grey[900],
+      height: height,
       child: Container(
         child: ProgressButton(
-          width: width,
-          height: height,
-          defaultWidget: defaultWidget,
-          type: ProgressButtonType.Flat,
-          borderRadius: 1,
-          animate: false,
-          progressWidget: JumpingDotsProgressIndicator(
-            fontSize: 20,
-            color: Colors.white,
-          ),
-          onPressed: onPressed
-        ),
+            width: width,
+            height: height,
+            defaultWidget: defaultWidget,
+            type: ProgressButtonType.Flat,
+            borderRadius: 1,
+            animate: false,
+            progressWidget: JumpingDotsProgressIndicator(
+              fontSize: 20,
+              color: Colors.white,
+            ),
+            onPressed: onPressed),
       ),
     );
   }

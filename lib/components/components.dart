@@ -6,16 +6,30 @@ import 'package:business_app/theme/themes.dart';
 import 'package:business_app/business_app/models/queues.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import 'package:reorderables/reorderables.dart';
 
 //TODO: Have "SilvePersistentHeader" resize to allow smaller button while scrolling down. Using Temp Button rn.
 class SlideableList extends StatefulWidget {
+  static const cellPadding = EdgeInsets.fromLTRB(30, 10, 30, 10);
+  
   final List<Widget> cells;
   final SliverPersistentHeader header;
   final Function onPlusTap;
   final String buttonText;
   final double topSpacing;
+  final bool enableReorder;
+  final Function(int, int) onReorder;
 
-  const SlideableList({Key key,this.onPlusTap, @required this.header, @required this.cells, this.buttonText = "Roar", this.topSpacing = 95}) : super(key: key);
+
+  const SlideableList({
+    Key key,
+    this.onPlusTap,
+    @required this.header, 
+    @required this.cells, 
+    this.buttonText = "Add Person", 
+    @required this.enableReorder,
+    this.onReorder,
+    this.topSpacing = 95}) : super(key: key);
 
   @override
   _SlideableListState createState() => _SlideableListState();
@@ -76,6 +90,24 @@ class _SlideableListState extends State<SlideableList> {
 
   @override
   Widget build(BuildContext context) {
+    var delegate = ReorderableSliverChildBuilderDelegate(
+      (context, index) {
+        return Column(
+          children: [
+            Container(
+              padding: SlideableList.cellPadding,
+              child: widget.cells[index]
+            ),
+          ],
+        );
+      },
+      childCount: widget.cells.length,
+    );
+
+    
+
+                
+
     return Scaffold(
       body: SafeArea(
         top: true,
@@ -90,44 +122,42 @@ class _SlideableListState extends State<SlideableList> {
                   controller: _scrollController,
                   slivers: <Widget>[
                     widget.header,
-                    SliverList(
-                      delegate: SliverChildBuilderDelegate((context, index) {
-                        if (index != 0) {
-                          return null;
-                        }
-
-                        return Container(
-                          child: Stack(
-                            children: [
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: MyStyles.of(context).colors.background1,
-                                  borderRadius: BorderRadius.only(
-                                    topLeft: Radius.circular(30),
-                                    topRight: Radius.circular(30)
+                    SliverPadding(
+                      padding: EdgeInsets.only(top: 70),
+                      sliver: ReorderableSliverList(
+                        onReorder: widget.onReorder ?? (oldIndex, newIndex) => {},
+                        buildDraggableFeedback: (context, constraints, widget) {
+                          return Material(
+                            color: Colors.transparent,
+                            child: Container(
+                              constraints: constraints,
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  Padding(
+                                    padding: SlideableList.cellPadding,
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(30),
+                                        boxShadow: [BoxShadow(
+                                          color: Colors.grey.withOpacity(0.5),
+                                          spreadRadius: 5,
+                                          blurRadius: 15,
+                                          offset: Offset(0, 3), // changes position of shadow
+                                        )],
+                                      ),
+                                    ),
                                   ),
-                                ),
-                                child: Column(
-                                  children: 
-                                    <Widget>[
-                                        SizedBox(
-                                          height: 70,
-                                        ),
-                                    ] +
-                                    
-                                    widget.cells.map((cell) {
-                                      return Container(
-                                        padding:EdgeInsets.fromLTRB(30, 10, 30, 10),
-                                        child: cell
-                                      );
-                                    }).toList()
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      })
-                    ),
+                                  widget,
+                                ],
+                              )
+                            ),
+                          );
+                        },
+                        enabled: widget.enableReorder,
+                        delegate: delegate
+                      ),
+                    )
                   ]
                 ),
               ),

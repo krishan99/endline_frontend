@@ -1,12 +1,8 @@
 import 'package:business_app/business_app/models/user.dart';
-import 'package:business_app/business_app/models/queues.dart';
 import 'package:business_app/business_app/route_generator.dart';
-import 'package:business_app/business_app/screens/dashboard_page.dart';
-import 'package:business_app/business_app/screens/user_creation_pages/setup_user_account_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'package:business_app/business_app/screens/home_page.dart';
 import 'package:provider/provider.dart';
 
 void main() {
@@ -48,7 +44,6 @@ class MyApp extends StatelessWidget {
         title: 'EndLine',
         onGenerateRoute: BAppRouteGenerator.generateRoute,
         initialRoute: "/",
-        // home: SetupAccountPage(),
     );
   }
 }

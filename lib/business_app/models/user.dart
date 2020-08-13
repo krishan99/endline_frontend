@@ -1,6 +1,7 @@
 
 import 'package:business_app/business_app/services/services.dart';
 import 'package:business_app/services/services.dart';
+import 'package:business_app/utils.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -17,20 +18,17 @@ abstract class ComplexEnum<T> {
 
 class ModelData {
   User user;
-  BusinessAppServer server;
   AllQueuesInfo qinfo;
 
   ModelData() {
-    this.server = BusinessAppServer();
-    this.user = User(server: server);
-    this.qinfo = AllQueuesInfo(server: server);
+    this.user = User();
+    this.qinfo = AllQueuesInfo();
   }
 }
 
 class User extends ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn googleSignIn = GoogleSignIn();
-  final BusinessAppServer server;
 
   String _businessName;
   String _businessDescription;
@@ -57,17 +55,17 @@ class User extends ChangeNotifier {
 
   Future<void> notifyServerOfSignIn(String email) async {
     final token = await getToken();
-    final map = await server.signIn(token: token);
+    final map = await BusinessAppServer.signIn(token: token);
     this._businessName = map["name"];
     this._businessDescription = map["description"];
     this.email = email;
-    server.connectSocket();
+    BusinessAppServer.connectSocket();
     notifyListeners();
   }
 
   Future<void> updateUserData({String name, String description}) async {
     assert(isLoggedIn);
-    await server.updateUserData(name: name ?? "", description: description ?? "");
+    await BusinessAppServer.updateUserData(name: name ?? "", description: description ?? "");
     this._businessName = name;
     this._businessDescription = description;
     notifyListeners();
@@ -75,7 +73,7 @@ class User extends ChangeNotifier {
 
   Future<void> createAccountOnServer({@required String email, String name, String description}) async {
     final token = await getToken();
-    await server.signUp(token: token, name: name, description: description);
+    await BusinessAppServer.signUp(token: token, name: name, description: description);
     await notifyServerOfSignIn(email);
   }
 
@@ -120,29 +118,51 @@ class User extends ChangeNotifier {
 
   Exception getFirebaseException(dynamic error) {
     if (error is PlatformException) {
-        return FirebaseServerException(getFirebaseErrorMessage(firebaseErrorCode: error.code));
+      switch (error.code) {
+        case "ERROR_INVALID_EMAIL":
+          return InvalidEmailException();
+        case "ERROR_WRONG_PASSWORD":
+          return InvalidPasswordException();
+        case "ERROR_EMAIL_ALREADY_IN_USE":
+          return EmailAlreadyInUseException();
+        case "ERROR_USER_NOT_FOUND":
+          return UserNotFoundException();
+        case "ERROR_USER_DISABLED":
+          return UserDisabledException();
+        case "ERROR_TOO_MANY_REQUESTS":
+          return TooManyRequestsException();
+        case "ERROR_OPERATION_NOT_ALLOWED":
+          return OperationNotAllowedException();
+        default:
+          return CustomException("An undefined error happened. code: ${error.code}");
+      }
       } else {
         return CustomException(error.toString());
     }
   }
 
-  String getFirebaseErrorMessage({@required String firebaseErrorCode}) {
-    switch (firebaseErrorCode) {
-        case "ERROR_INVALID_EMAIL":
-          return "Your email address appears to be malformed.";
-        case "ERROR_WRONG_PASSWORD":
-          return "Your password is wrong.";
-        case "ERROR_USER_NOT_FOUND":
-          return "User with this email doesn't exist.";
-        case "ERROR_USER_DISABLED":
-          return "User with this email has been disabled.";
-        case "ERROR_TOO_MANY_REQUESTS":
-          return "Too many requests. Try again later.";
-        case "ERROR_OPERATION_NOT_ALLOWED":
-          return "Signing in with Email and Password is not enabled.";
-        default:
-          return "An undefined error happened. code: $firebaseErrorCode";
-      }
+  Future<void> sendPasswordResetLink({@required String email}) async {
+    if (!Utils.isValidEmail(email)) {
+      throw CustomException("Not a valid email address.");
+    }
+
+    try {
+      await _auth.sendPasswordResetEmail(email: email);
+    } catch (error) {
+      throw getFirebaseException(error);
+    }
+  }
+
+  Future<AuthResult> signInOnFirebase({
+    @required String email,
+    @required String password,
+  }) async {
+    try {
+      return await _auth.signInWithEmailAndPassword(
+          email: email, password: password);
+    } catch (error) {
+      throw getFirebaseException(error);
+    }
   }
 
   Future<void> signIn({
@@ -151,16 +171,7 @@ class User extends ChangeNotifier {
       String businessName,
       String description
     }) async {
-
-    AuthResult result;
-
-    try {
-      result = await _auth.signInWithEmailAndPassword(
-          email: email, password: password);
-    } catch (error) {
-      throw getFirebaseException(error);
-    }
-
+    final result = await signInOnFirebase(email: email, password: password);
     return notifyServerOfSignIn(result.user.email);
   }
 
@@ -170,10 +181,10 @@ class User extends ChangeNotifier {
 
   Future<void> signOut() async {
     await _auth.signOut();
-    //TODO: Sign out from server? Idk if this is needed.
+    BusinessAppServer.signOut();
   }
 
-  User({@required this.server}) {
+  User() {
     _auth.onAuthStateChanged.listen((fUser) async {
       this._firebaseUser = fUser;
       print("AUTH STATE CHANGED: ${this.isLoggedIn}");

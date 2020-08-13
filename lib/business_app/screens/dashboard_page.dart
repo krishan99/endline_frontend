@@ -1,8 +1,7 @@
-import 'dart:math';
-
 import 'package:business_app/business_app/models/queues.dart';
+import 'package:business_app/business_app/services/services.dart';
 import 'package:business_app/components/cells/slideable_list_cell.dart';
-import 'package:business_app/services/services.dart';
+import 'package:business_app/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
@@ -16,89 +15,96 @@ import 'package:toast/toast.dart';
 class DashboardPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Consumer<AllQueuesInfo>(
-      builder: (context, qinfo, _) {
-        return FutureBuilder(
-            future: qinfo.retrieveServer(),
-            builder: (context, snapshot) {
-              switch (snapshot.connectionState) {
-                case ConnectionState.waiting:
-                case ConnectionState.none:
-                  return Scaffold(
-                      body: Container(
+    final queues = Provider.of<AllQueuesInfo>(context, listen: false);
+    return FutureBuilder(
+        future: queues.refresh(),
+        builder: (context, snapshot) {
+          switch (snapshot.connectionState) {
+            case ConnectionState.waiting:
+            case ConnectionState.none:
+              return Scaffold(
+                  body: Container(
+                alignment: Alignment.center,
+                color: MyStyles.of(context).colors.background2,
+                child: Text(
+                  "Loading Queues...",
+                  style: MyStyles.of(context).textThemes.bodyText2,
+                ),
+              ));
+            default:
+              if (snapshot.hasError)
+                return Container(
+                    color: Colors.white,
                     alignment: Alignment.center,
-                    color: MyStyles.of(context).colors.background2,
-                    child: Text(
-                      "Loading Queues...",
-                      style: MyStyles.of(context).textThemes.bodyText2,
-                    ),
-                  ));
-                default:
-                  if (snapshot.hasError)
-                    return Container(
-                        color: Colors.white,
-                        alignment: Alignment.center,
-                        child: Text('Error: ${snapshot.error.toString()}',
-                            style: MyStyles.of(context).textThemes.h2));
-                  else
-                    return Container(
-                      // color: Colors.black,
-                      child: Container(
-                        child: SlideableList(
-                          topSpacing: 55,
-                          buttonText: "Add Queue",
-                          onPlusTap: () async {
-                            try {
-                              Navigator.of(context)
-                                  .pushNamed("/createQueue", arguments: qinfo);
-                            } catch (error) {
-                              Toast.show(error.toString(), context,
-                                  duration: Toast.LENGTH_LONG,
-                                  gravity: Toast.BOTTOM);
-                            }
-                          },
-                          header: SliverPersistentHeader(
-                            pinned: false,
-                            delegate: _SliverAppBarDelegate(
-                              color: MyStyles.of(context).colors.background2,
-                              minExtent: 60,
-                              maxExtent: 130,
-                            ),
+                    child: Text('Error: ${snapshot.error.toString()}',
+                        style: MyStyles.of(context).textThemes.h2));
+              else
+                return Consumer<AllQueuesInfo>(builder: (context, qinfo, _) {
+                  return Container(
+                    // color: Colors.black,
+                    child: Container(
+                      child: SlideableList(
+                        topSpacing: 60,
+                        buttonText: "Add Queue",
+                        onPlusTap: () async {
+                          try {
+                            Navigator.of(context)
+                                .pushNamed("/createQueue", arguments: qinfo);
+                          } catch (error) {
+                            Toast.show(error.toString(), context,
+                                duration: Toast.LENGTH_LONG,
+                                gravity: Toast.BOTTOM);
+                          }
+                        },
+                        enableReorder: false,
+                        header: SliverPersistentHeader(
+                          pinned: false,
+                          delegate: _SliverAppBarDelegate(
+                            color: MyStyles.of(context).colors.background2,
+                            minExtent: 60,
+                            maxExtent: 130,
                           ),
-                          cells: qinfo.body
-                              .map((element) => ChangeNotifierProvider.value(
-                                  value: element,
-                                  child: Consumer<Queue>(
-                                    builder: (context, queue, _) {
-                                      return SlideableListCell.queue(
-                                          queue: queue,
-                                          onDelete: (isActive) async {
-                                            try {
-                                              await qinfo.deleteQueue(queue.id);
-                                              return true;
-                                            } catch (error) {
-                                              return false;
-                                            }
-                                          },
-                                          onActivate: (isActive) async {
-                                            return false;
-                                          },
-                                          onTap: () {
-                                            Navigator.of(context).pushNamed(
-                                                "/queue",
-                                                arguments: queue);
-                                            // return false;
-                                          });
-                                    },
-                                  )))
-                              .toList(),
                         ),
+                        cells: qinfo.queues
+                            .map((element) => ChangeNotifierProvider.value(
+                                value: element,
+                                child: Consumer<Queue>(
+                                  builder: (context, queue, _) {
+                                    return SlideableListCell.queue(
+                                        queue: queue,
+                                        onDelete: (isActive) async {
+                                          await qinfo.deleteQueue(queue.id);
+                                          return true;
+                                        },
+                                        onActivate: (isActive) async {
+                                          final currentQueueState = queue.state;
+                                          queue.state =
+                                              queue.state == QueueState.active
+                                                  ? QueueState.inactive
+                                                  : QueueState.active;
+                                          try {
+                                            await BusinessAppServer.updateQueue(
+                                                queue);
+                                            return true;
+                                          } catch (error) {
+                                            queue.state = currentQueueState;
+                                            return false;
+                                          }
+                                        },
+                                        onTap: () {
+                                          Navigator.of(context).pushNamed(
+                                              "/queue",
+                                              arguments: queue);
+                                        });
+                                  },
+                                )))
+                            .toList(),
                       ),
-                    );
-              }
-            });
-      },
-    );
+                    ),
+                  );
+                });
+          }
+        });
   }
 }
 
@@ -135,6 +141,7 @@ class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
             ),
           ),
         ),
+        SizedBox(height: 10)
       ]),
     );
   }
@@ -180,9 +187,9 @@ class DashboardAppBar extends StatelessWidget {
             Consumer<User>(
               builder: (context, user, _) {
                 return GestureDetector(
-                    onTap: () async {
-                      await user.signOut();
-                      Navigator.of(context).popAndPushNamed("/home");
+                    onTap: () {
+                      Navigator.of(context)
+                          .pushNamed("/AccountSettings", arguments: user);
                     },
                     child: Container(
                       padding: EdgeInsets.only(left: 5, right: 5),
